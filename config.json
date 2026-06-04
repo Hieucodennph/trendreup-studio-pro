@@ -1,0 +1,27 @@
+{
+  "app_name": "TrendReup Studio Pro",
+  "host": "127.0.0.1",
+  "port": 8765,
+  "download_dir": "./downloads",
+  "output_dir": "./output",
+  "raw_dir": "./raw",
+  "database_path": "./studio_downloader.db",
+  "enabled_platforms": [
+    "auto",
+    "youtube",
+    "tiktok",
+    "douyin",
+    "rednote",
+    "instagram",
+    "facebook",
+    "kwai",
+    "likee",
+    "twitter"
+  ],
+  "video_processing": {
+    "default_mode": "anti_detect",
+    "compress": true,
+    "speed_min": 0.5,
+    "speed_max": 2.0
+  }
+}

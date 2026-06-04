@@ -1,0 +1,17 @@
+.analysis/
+.pytest_cache/
+__pycache__/
+**/__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+*.db
+cookies/
+downloads/
+output/
+raw/
+logs/
+node_modules/
+dist/
+build/

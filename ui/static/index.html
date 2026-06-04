@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TrendReup Studio Pro</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">TR</div>
+          <div>
+            <h1>TrendReup Studio Pro</h1>
+            <p id="healthText">Checking local API...</p>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Primary">
+          <button class="nav-item active" data-tab="dashboard">Dashboard</button>
+          <button class="nav-item" data-tab="download">Download</button>
+          <button class="nav-item" data-tab="reup">Quick Reup</button>
+          <button class="nav-item" data-tab="ideas">Ideas</button>
+          <button class="nav-item" data-tab="trends">Trend Crawler</button>
+          <button class="nav-item" data-tab="batch">Batch Queue</button>
+          <button class="nav-item" data-tab="channels">Channels</button>
+          <button class="nav-item" data-tab="processor">Processor</button>
+          <button class="nav-item" data-tab="content">Content</button>
+          <button class="nav-item" data-tab="history">History</button>
+          <button class="nav-item" data-tab="settings">Settings</button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <label class="switch">
+            <input id="themeToggle" type="checkbox" />
+            <span>Light theme</span>
+          </label>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <section class="topbar">
+          <div>
+            <p class="eyebrow">Web + desktop local studio</p>
+            <h2 id="screenTitle">Dashboard</h2>
+          </div>
+          <button id="refreshAll" class="icon-button" title="Refresh data">Refresh</button>
+        </section>
+
+        <section class="panel-grid">
+          <article id="dashboard" class="panel tab-panel active wide">
+            <div class="panel-heading">
+              <h3>Operating Dashboard</h3>
+              <p>Realtime local database summary for reup workflow, content ideas, queue, and crawled trends.</p>
+            </div>
+            <div id="statsGrid" class="metric-grid"></div>
+            <div class="section-split">
+              <div>
+                <h3>Recent Videos</h3>
+                <div id="videosList" class="compact-list"></div>
+              </div>
+              <div>
+                <h3>Trending Hashtags</h3>
+                <div id="hashtagsList" class="compact-list"></div>
+              </div>
+            </div>
+          </article>
+
+          <article id="download" class="panel tab-panel">
+            <div class="panel-heading">
+              <h3>Download Center</h3>
+              <p>Paste a clean URL or a full message containing a URL. The app detects platform and applies the best downloader preset.</p>
+            </div>
+            <form id="downloadForm" class="form">
+              <label>Platform <select name="platform" class="platform-select"></select></label>
+              <label>Video URL or pasted text <textarea name="url" rows="4" placeholder="Paste link or text containing https://..." required></textarea></label>
+              <div class="two-col">
+                <label>Quality
+                  <select name="quality">
+                    <option value="1080p">1080p balanced</option>
+                    <option value="720p">720p fast</option>
+                    <option value="480p">480p small</option>
+                    <option value="best">Best available</option>
+                  </select>
+                </label>
+                <label>Output folder <input name="output_dir" placeholder="./downloads" /></label>
+              </div>
+              <label class="check"><input name="download_video" type="checkbox" checked /> Download media file</label>
+              <label class="check"><input name="audio_only" type="checkbox" /> Extract audio only</label>
+              <label class="check"><input name="write_subtitles" type="checkbox" /> Save available subtitles</label>
+              <label class="check"><input name="write_thumbnail" type="checkbox" /> Save thumbnail</label>
+              <button type="submit">Start Download</button>
+            </form>
+          </article>
+
+          <article id="reup" class="panel tab-panel">
+            <div class="panel-heading">
+              <h3>Quick Reup</h3>
+              <p>Download, optionally process anti-detect, generate edited caption, and save into history.</p>
+            </div>
+            <form id="reupForm" class="form">
+              <label>Platform <select name="platform" class="platform-select"></select></label>
+              <label>Video URL <input name="url" type="url" placeholder="https://..." required /></label>
+              <label>Channel ID <input name="channel_id" value="default" /></label>
+              <label>Watermark text <input name="watermark_text" placeholder="@yourbrand" /></label>
+              <label>Quality
+                <select name="quality">
+                  <option value="1080p">1080p balanced</option>
+                  <option value="720p">720p fast</option>
+                  <option value="480p">480p small</option>
+                  <option value="best">Best available</option>
+                </select>
+              </label>
+              <label class="check"><input name="process_video" type="checkbox" /> Anti-detect process after download</label>
+              <label class="check"><input name="auto_caption" type="checkbox" checked /> Auto-edit caption</label>
+              <button type="submit">Run Quick Reup</button>
+            </form>
+          </article>
+
+          <article id="ideas" class="panel tab-panel">
+            <div class="panel-heading">
+              <h3>Content Ideas</h3>
+              <p>Manage keywords, topics, hashtags, and priority sources for crawler runs.</p>
+            </div>
+            <form id="ideaForm" class="form">
+              <label>Name <input name="name" placeholder="AI tools, street food, #fyp..." required /></label>
+              <div class="two-col">
+                <label>Type
+                  <select name="type">
+                    <option value="keyword">Keyword</option>
+                    <option value="topic">Topic</option>
+                    <option value="idea">Idea</option>
+                    <option value="hashtag">Hashtag</option>
+                  </select>
+                </label>
+                <label>Priority <input name="priority" type="number" min="0" max="10" value="5" /></label>
+              </div>
+              <div class="two-col">
+                <label>Category <input name="category" value="general" /></label>
+                <label>Platform filter <input name="platform_filter" value="all" /></label>
+              </div>
+              <button type="submit">Add Idea</button>
+            </form>
+            <div id="ideasList" class="compact-list"></div>
+          </article>
+
+          <article id="trends" class="panel tab-panel">
+            <div class="panel-heading">
+              <h3>Trend Crawler</h3>
+              <p>Search trend candidates by keyword or crawl all active ideas into the trend library.</p>
+            </div>
+            <form id="trendForm" class="form">
+              <label>Keyword <input name="keyword" value="ai tools" required /></label>
+              <label>Platforms <input name="platforms" value="youtube,tiktok,douyin" /></label>
+              <label>Max results per platform <input name="max_results" type="number" min="1" max="25" value="5" /></label>
+              <label class="check"><input name="save" type="checkbox" checked /> Save results to database</label>
+              <button type="submit">Search Trends</button>
+            </form>
+            <button id="crawlIdeasBtn" class="secondary-action">Crawl All Active Ideas</button>
+            <div id="trendsList" class="compact-list"></div>
+          </article>
+
+          <article id="batch" class="panel tab-panel">
+            <div class="panel-heading">
+              <h3>Batch Queue</h3>
+              <p>Queue many URLs, prioritize them, then process the next item when ready.</p>
+            </div>
+            <form id="queueForm" class="form">
+              <label>URL <input name="url" type="url" placeholder="https://..." required /></label>
+              <div class="two-col">
+                <label>Platform <select name="platform" class="platform-select"></select></label>
+                <label>Priority <input name="priority" type="number" min="0" max="10" value="5" /></label>
+              </div>
+              <label>Channel ID <input name="channel_id" value="default" /></label>
+              <button type="submit">Add To Queue</button>
+            </form>
+            <button id="processNextBtn" class="secondary-action">Process Next Queue Item</button>
+            <div id="queueList" class="compact-list"></div>
+          </article>
+
+          <article id="channels" class="panel tab-panel">
+            <div class="panel-heading">
+              <h3>Channels</h3>
+              <p>Track destination channels and posting identities for reup batches.</p>
+            </div>
+            <form id="channelForm" class="form">
+              <label>Channel ID <input name="id" placeholder="yt-main" required /></label>
+              <label>Name <input name="name" placeholder="Main YouTube Channel" required /></label>
+              <label>Platform <input name="platform" value="youtube" /></label>
+              <label>Cookie/API note <input name="cookies" placeholder="cookies/youtube.txt" /></label>
+              <button type="submit">Save Channel</button>
+            </form>
+            <div id="channelsList" class="compact-list"></div>
+          </article>
+
+          <article id="processor" class="panel tab-panel">
+            <div class="panel-heading">
+              <h3>Video Processor</h3>
+              <p>Apply anti-detect edits, watermark, speed adjustment, mirroring, and compression with FFmpeg.</p>
+            </div>
+            <form id="processForm" class="form">
+              <label>Input path <input name="input_path" placeholder="C:\path\video.mp4" required /></label>
+              <div class="two-col">
+                <label>Mode <input name="mode" value="anti_detect" /></label>
+                <label>Speed <input name="speed" type="number" min="0.5" max="2" step="0.05" value="1" /></label>
+              </div>
+              <label>Watermark text <input name="watermark_text" placeholder="@brand" /></label>
+              <label class="check"><input name="mirror" type="checkbox" /> Mirror video</label>
+              <label class="check"><input name="compress" type="checkbox" checked /> Compress output</label>
+              <button type="submit">Process Video</button>
+            </form>
+          </article>
+
+          <article id="content" class="panel tab-panel">
+            <div class="panel-heading">
+              <h3>Content Editor</h3>
+              <p>Clean captions, normalize common shorthand, and append category hashtags.</p>
+            </div>
+            <form id="contentForm" class="form">
+              <label>Original caption <textarea name="text" rows="7" placeholder="Paste caption..." required></textarea></label>
+              <label>Category <input name="category" value="general" /></label>
+              <button type="submit">Auto Edit Caption</button>
+            </form>
+          </article>
+
+          <article id="history" class="panel tab-panel wide">
+            <div class="panel-heading">
+              <h3>Job History</h3>
+              <p>Recent API jobs stored in SQLite.</p>
+            </div>
+            <div id="jobsList" class="jobs-list"></div>
+          </article>
+
+          <article id="settings" class="panel tab-panel">
+            <div class="panel-heading">
+              <h3>Settings</h3>
+              <p>Runtime paths, enabled platforms, and database location.</p>
+            </div>
+            <div id="settingsView" class="settings-view"></div>
+          </article>
+
+          <article class="panel result-panel">
+            <div class="panel-heading">
+              <h3>Result</h3>
+              <p id="statusLine">Ready.</p>
+            </div>
+            <pre id="resultBox">{}</pre>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

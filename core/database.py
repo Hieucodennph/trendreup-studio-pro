@@ -143,6 +143,16 @@ class JobStore:
                     updated_at TEXT NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS worker_runs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    worker_id TEXT NOT NULL,
+                    queue_id INTEGER,
+                    status TEXT NOT NULL,
+                    detail_json TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_videos_status ON videos(status);
                 CREATE INDEX IF NOT EXISTS idx_queue_status ON queue(status);
                 CREATE INDEX IF NOT EXISTS idx_crawled_idea ON crawled_content(idea_id);
@@ -299,6 +309,70 @@ class JobStore:
             else:
                 conn.execute("UPDATE queue SET status=?, error_message=NULL WHERE id=?", (status, queue_id))
 
+    def claim_next_queue_item(self, worker_id: str) -> dict[str, Any] | None:
+        now = self._now()
+        with self.connect() as conn:
+            row = conn.execute(
+                """
+                SELECT * FROM queue
+                WHERE status='pending'
+                ORDER BY priority DESC, created_at ASC
+                LIMIT 1
+                """
+            ).fetchone()
+            if not row:
+                return None
+            queue_id = int(row["id"])
+            conn.execute("UPDATE queue SET status='processing', error_message=NULL WHERE id=?", (queue_id,))
+            conn.execute(
+                """
+                INSERT INTO worker_runs (worker_id, queue_id, status, detail_json, created_at, updated_at)
+                VALUES (?, ?, 'processing', '{}', ?, ?)
+                """,
+                (worker_id, queue_id, now, now),
+            )
+            return dict(row)
+
+    def complete_queue_item(self, queue_id: int, worker_id: str, result: dict[str, Any]) -> None:
+        now = self._now()
+        with self.connect() as conn:
+            conn.execute("UPDATE queue SET status='completed', error_message=NULL WHERE id=?", (queue_id,))
+            conn.execute(
+                """
+                INSERT INTO worker_runs (worker_id, queue_id, status, detail_json, created_at, updated_at)
+                VALUES (?, ?, 'completed', ?, ?, ?)
+                """,
+                (worker_id, queue_id, json.dumps(result, ensure_ascii=False), now, now),
+            )
+
+    def fail_queue_item(self, queue_id: int, worker_id: str, error_message: str) -> None:
+        now = self._now()
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE queue SET status='failed', error_message=?, retry_count=retry_count+1 WHERE id=?",
+                (error_message, queue_id),
+            )
+            conn.execute(
+                """
+                INSERT INTO worker_runs (worker_id, queue_id, status, detail_json, created_at, updated_at)
+                VALUES (?, ?, 'failed', ?, ?, ?)
+                """,
+                (worker_id, queue_id, json.dumps({"error": error_message}, ensure_ascii=False), now, now),
+            )
+
+    def list_worker_runs(self, limit: int = 50) -> list[dict[str, Any]]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM worker_runs ORDER BY id DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            item["detail"] = json.loads(item.pop("detail_json") or "{}")
+            result.append(item)
+        return result
+
     def add_channel(self, channel_id: str, name: str, platform: str = "youtube", api_key: str = "", cookies: str = "") -> None:
         now = self._now()
         with self.connect() as conn:
@@ -453,6 +527,7 @@ class JobStore:
                 "crawled": scalar("SELECT COUNT(*) FROM crawled_content"),
                 "downloaded": scalar("SELECT COUNT(*) FROM crawled_content WHERE is_downloaded=1"),
                 "processed": scalar("SELECT COUNT(*) FROM crawled_content WHERE is_processed=1"),
+                "workers": scalar("SELECT COUNT(*) FROM worker_runs"),
                 "total_views": scalar("SELECT COALESCE(SUM(views), 0) FROM videos"),
                 "total_likes": scalar("SELECT COALESCE(SUM(likes), 0) FROM videos"),
             }

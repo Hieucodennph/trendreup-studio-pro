@@ -41,6 +41,36 @@ def test_content_edit_endpoint():
     assert "#technology" in data["edited"]
 
 
+def test_auto_plan_and_worker_claim_flow():
+    client = TestClient(app)
+    plan = client.post(
+        "/api/automation/plan",
+        json={
+            "keyword": "car sensor",
+            "platforms": ["youtube"],
+            "max_results_per_platform": 1,
+            "channel_id": "default",
+            "auto_queue": True,
+        },
+    )
+    assert plan.status_code == 200
+    payload = plan.json()
+    assert payload["success"] is True
+    assert payload["queued_count"] == 1
+
+    claimed = client.post("/api/worker/claim", json={"worker_id": "test-worker"})
+    assert claimed.status_code == 200
+    item = claimed.json()["item"]
+    assert item is not None
+    assert item["status"] == "pending"
+
+    failed = client.post("/api/worker/fail", json={"worker_id": "test-worker", "queue_id": item["id"], "error": "test failure"})
+    assert failed.status_code == 200
+    runs = client.get("/api/worker/runs")
+    assert runs.status_code == 200
+    assert len(runs.json()["runs"]) >= 1
+
+
 def test_url_tools_clean_and_detect_platform():
     pasted = "Check video này: https://youtu.be/dQw4w9WgXcQ?si=test nhé"
     clean = extract_first_url(pasted)

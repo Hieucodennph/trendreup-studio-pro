@@ -94,6 +94,7 @@ async function loadStats() {
     crawled: "Crawled",
     downloaded: "Downloaded",
     processed: "Processed",
+    workers: "Worker Runs",
     total_views: "Views",
     total_likes: "Likes",
   };
@@ -151,8 +152,28 @@ async function loadHashtags() {
   $("#hashtagsList").innerHTML = data.hashtags.map((tag) => card(tag.name, `${tag.platform} · score ${tag.score}`)).join("");
 }
 
+async function loadWorkerRuns() {
+  const data = await api("/api/worker/runs?limit=30");
+  const html = data.runs.length
+    ? data.runs
+        .map((run) =>
+          card(
+            `#${run.id} ${run.worker_id} <span class="status-${run.status}">${run.status}</span>`,
+            `queue ${run.queue_id || "-"} · ${run.updated_at}`,
+            run.detail?.error ? `<span class="status-failed">${run.detail.error}</span>` : "",
+          ),
+        )
+        .join("")
+    : `<p>No worker activity yet.</p>`;
+  const workerList = $("#workerRunsList");
+  if (workerList) workerList.innerHTML = html;
+}
+
 async function refreshAll() {
-  await Promise.all([loadHealth(), loadStats(), loadJobs(), loadIdeas(), loadTrends(), loadQueue(), loadChannels(), loadVideos(), loadHashtags()]);
+  await Promise.all([loadHealth(), loadStats(), loadJobs(), loadIdeas(), loadTrends(), loadQueue(), loadChannels(), loadVideos(), loadHashtags(), loadWorkerRuns()]);
+  const autoQueueList = $("#autoQueueList");
+  const queueList = $("#queueList");
+  if (autoQueueList && queueList) autoQueueList.innerHTML = queueList.innerHTML;
 }
 
 function setupTheme() {
@@ -172,6 +193,10 @@ async function main() {
   await loadPlatforms();
 
   submitForm($("#reupForm"), "/api/reup", "Quick reup");
+  submitForm($("#autoPlanForm"), "/api/automation/plan", "Auto reup plan", (payload) => ({
+    ...payload,
+    platforms: csv(payload.platforms),
+  }));
   submitForm($("#downloadForm"), "/api/download", "Download", (payload) => ({
     ...payload,
     output_dir: payload.output_dir || null,

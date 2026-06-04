@@ -104,6 +104,16 @@ class CrawlIdeasRequest(BaseModel):
     max_per_idea: int = Field(default=3, ge=1, le=20)
 
 
+class AutoReupPlanRequest(BaseModel):
+    keyword: str
+    platforms: list[str] = Field(default_factory=lambda: ["youtube", "tiktok", "douyin"])
+    max_results_per_platform: int = Field(default=5, ge=1, le=25)
+    channel_id: str = "default"
+    priority: int = Field(default=5, ge=0, le=10)
+    auto_queue: bool = True
+    min_trend_score: float = Field(default=0, ge=0, le=100)
+
+
 class QueueRequest(BaseModel):
     url: str
     channel_id: str = "default"
@@ -132,6 +142,26 @@ class ProcessVideoRequest(BaseModel):
     speed: float = Field(default=1.0, ge=0.5, le=2.0)
     mirror: bool = False
     compress: bool = True
+    hide_caption_area: bool = False
+    output_aspect: str = "source"
+    mute_original: bool = False
+    background_music_path: str = ""
+
+
+class WorkerClaimRequest(BaseModel):
+    worker_id: str = "local-worker"
+
+
+class WorkerCompleteRequest(BaseModel):
+    worker_id: str = "local-worker"
+    queue_id: int
+    result: dict[str, Any] = Field(default_factory=dict)
+
+
+class WorkerFailRequest(BaseModel):
+    worker_id: str = "local-worker"
+    queue_id: int
+    error: str
 
 
 PLATFORMS = {
@@ -386,6 +416,35 @@ async def crawl_ideas(request: CrawlIdeasRequest) -> dict[str, Any]:
     return {"success": True, "ideas": len(active_ideas), "count": len(results), "results": results}
 
 
+@app.post("/api/automation/plan")
+async def auto_reup_plan(request: AutoReupPlanRequest) -> dict[str, Any]:
+    results = trend_crawler.search(request.keyword, request.platforms, request.max_results_per_platform)
+    selected = [item for item in results if float(item.get("trend_score") or 0) >= request.min_trend_score]
+    saved = []
+    queued = []
+    for item in selected:
+        content_id = job_store.save_crawled_content(item)
+        item["content_id"] = content_id
+        saved.append(item)
+        if request.auto_queue:
+            queue_id = job_store.add_to_queue(
+                item["video_url"],
+                request.channel_id,
+                item.get("source_platform") or "auto",
+                request.priority,
+            )
+            queued.append({"queue_id": queue_id, "url": item["video_url"], "platform": item.get("source_platform")})
+    return {
+        "success": True,
+        "keyword": request.keyword,
+        "platforms": request.platforms,
+        "saved_count": len(saved),
+        "queued_count": len(queued),
+        "saved": saved,
+        "queued": queued,
+    }
+
+
 @app.get("/api/trends/content")
 async def crawled_content(limit: int = 100) -> dict[str, Any]:
     return {"content": job_store.list_crawled_content(limit)}
@@ -430,6 +489,31 @@ async def process_next_queue() -> dict[str, Any]:
         raise
 
 
+@app.post("/api/worker/claim")
+async def worker_claim(request: WorkerClaimRequest) -> dict[str, Any]:
+    item = job_store.claim_next_queue_item(request.worker_id)
+    return {"success": True, "item": item}
+
+
+@app.post("/api/worker/complete")
+async def worker_complete(request: WorkerCompleteRequest) -> dict[str, Any]:
+    job_store.complete_queue_item(request.queue_id, request.worker_id, request.result)
+    if request.result.get("video"):
+        job_store.add_video(request.result["video"])
+    return {"success": True}
+
+
+@app.post("/api/worker/fail")
+async def worker_fail(request: WorkerFailRequest) -> dict[str, Any]:
+    job_store.fail_queue_item(request.queue_id, request.worker_id, request.error)
+    return {"success": True}
+
+
+@app.get("/api/worker/runs")
+async def worker_runs(limit: int = 50) -> dict[str, Any]:
+    return {"runs": job_store.list_worker_runs(limit)}
+
+
 @app.get("/api/channels")
 async def channels() -> dict[str, Any]:
     return {"channels": job_store.list_channels()}
@@ -466,6 +550,10 @@ async def process_video(request: ProcessVideoRequest) -> dict[str, Any]:
             speed=request.speed,
             mirror=request.mirror,
             compress=request.compress,
+            hide_caption_area=request.hide_caption_area,
+            output_aspect=request.output_aspect,
+            mute_original=request.mute_original,
+            background_music_path=request.background_music_path or None,
         )
 
     return await tracked("process_video", request.input_path, None, work)

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import time
 from pathlib import Path
 from typing import Any
 
@@ -113,6 +115,70 @@ class YtDlpDownloader:
 
         return await asyncio.to_thread(work)
 
+    def _browser_fallback_enabled(self) -> bool:
+        return os.getenv("STUDIO_BROWSER_FALLBACK", "").lower() in {"1", "true", "yes", "on"}
+
+    def _download_with_browser_sync(self, url: str, output_dir: Path) -> Path:
+        try:
+            import requests
+            from selenium import webdriver
+            from selenium.webdriver.chrome.options import Options
+            from selenium.webdriver.common.by import By
+            from selenium.webdriver.support import expected_conditions as EC
+            from selenium.webdriver.support.ui import WebDriverWait
+        except ImportError as exc:
+            raise RuntimeError("Selenium browser fallback needs: pip install selenium requests") from exc
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        options = Options()
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option("useAutomationExtension", False)
+        options.add_argument("--disable-notifications")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0")
+        if os.getenv("STUDIO_BROWSER_HEADLESS", "").lower() in {"1", "true", "yes", "on"}:
+            options.add_argument("--headless=new")
+
+        driver = webdriver.Chrome(options=options)
+        try:
+            driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+            driver.set_page_load_timeout(45)
+            driver.get(url)
+            WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+            time.sleep(3)
+            current_url = driver.current_url
+            video_url = ""
+            for selector in ["video", "source"]:
+                for element in driver.find_elements(By.TAG_NAME, selector):
+                    src = element.get_attribute("src")
+                    if src and src.startswith("http"):
+                        video_url = src
+                        break
+                if video_url:
+                    break
+            if not video_url:
+                raise RuntimeError("Browser fallback could not find a video source URL.")
+
+            headers = {
+                "User-Agent": driver.execute_script("return navigator.userAgent"),
+                "Referer": current_url,
+                "Accept": "*/*",
+            }
+            filename = output_dir / f"{safe_filename(self.platform)}_{int(time.time())}.mp4"
+            with requests.get(video_url, headers=headers, stream=True, timeout=180) as response:
+                response.raise_for_status()
+                with filename.open("wb") as handle:
+                    for chunk in response.iter_content(chunk_size=1024 * 128):
+                        if chunk:
+                            handle.write(chunk)
+            if not filename.exists() or filename.stat().st_size == 0:
+                raise RuntimeError("Browser fallback produced an empty file.")
+            return filename
+        finally:
+            driver.quit()
+
     def _metadata_from_info(self, info: dict[str, Any]) -> VideoMetadata:
         return VideoMetadata(
             id=str(info.get("id") or ""),
@@ -138,6 +204,12 @@ class YtDlpDownloader:
         return self._metadata_from_info(info)
 
     async def download(self, url: str, output_dir: Path) -> Path:
+        if self.platform in {"douyin", "kwai", "likee"} and self._browser_fallback_enabled():
+            try:
+                return await asyncio.to_thread(self._download_with_browser_sync, url, output_dir)
+            except Exception as exc:
+                self.events.append(f"browser fallback failed: {exc}")
+
         before = set(output_dir.glob("*")) if output_dir.exists() else set()
         info = await self._extract(url, download=True, output_dir=output_dir)
         after = set(output_dir.glob("*"))

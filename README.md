@@ -34,6 +34,24 @@ vercel --prod
 
 On Vercel, runtime data is written to the platform temp directory. That keeps the deploy read-only safe, but it also means downloaded files and SQLite data are ephemeral. For permanent production storage, set `STUDIO_DB`, `STUDIO_DOWNLOAD_DIR`, and `STUDIO_OUTPUT_DIR` to a mounted or external storage-backed path/provider.
 
+## Local/VPS Worker
+
+Use a worker on a Windows machine or VPS for heavy downloading, browser fallback, FFmpeg processing, subtitle/audio work, and cookie-backed platforms.
+
+```powershell
+python worker.py --api-url http://127.0.0.1:8765 --process-video --hide-caption-area --watermark @brand
+```
+
+For Douyin/Kwai/Likee browser fallback, install optional dependencies and enable Selenium:
+
+```powershell
+pip install -r requirements-optional.txt
+$env:STUDIO_BROWSER_FALLBACK="1"
+python worker.py --api-url http://127.0.0.1:8765 --process-video
+```
+
+The deployed Vercel dashboard can create automation plans and queue items, while the worker does the long-running download/edit jobs on a machine that has Chrome, FFmpeg, cookies, and durable storage.
+
 ## Optional Desktop Window
 
 ```powershell
@@ -46,6 +64,8 @@ If PyWebView is not installed, `app.py` falls back to opening the browser.
 ## Main Features
 
 - Quick reup workflow: download, optional anti-detect processing, edited caption, and video history.
+- Auto Studio workflow: paste a keyword/topic, select platforms, save candidates, and queue them for workers.
+- Worker API for local/VPS machines to claim queue items, process media, and report results back to the dashboard.
 - Download video or metadata from Auto/yt-dlp, YouTube, TikTok, Douyin, Rednote/Xiaohongshu, Instagram, Facebook, Kwai, Likee, and Twitter/X.
 - Crawl profile/channel URLs through `yt-dlp` playlist extraction.
 - Trend crawler for keywords and active content ideas with saved trend library.

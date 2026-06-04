@@ -19,6 +19,7 @@
 
         <nav class="nav" aria-label="Primary">
           <button class="nav-item active" data-tab="dashboard">Dashboard</button>
+          <button class="nav-item" data-tab="auto-studio">Auto Studio</button>
           <button class="nav-item" data-tab="download">Download</button>
           <button class="nav-item" data-tab="reup">Quick Reup</button>
           <button class="nav-item" data-tab="ideas">Ideas</button>
@@ -63,6 +64,37 @@
               <div>
                 <h3>Trending Hashtags</h3>
                 <div id="hashtagsList" class="compact-list"></div>
+              </div>
+            </div>
+          </article>
+
+          <article id="auto-studio" class="panel tab-panel wide">
+            <div class="panel-heading">
+              <h3>Auto Reup Studio</h3>
+              <p>Paste a keyword or topic, choose platforms, collect candidates, and push them straight into the worker queue.</p>
+            </div>
+            <form id="autoPlanForm" class="form">
+              <label>Keyword / topic <input name="keyword" placeholder="car sensor repair, AI tools, #xuhuong..." required /></label>
+              <label>Platforms <input name="platforms" value="youtube,tiktok,douyin" /></label>
+              <div class="two-col">
+                <label>Results per platform <input name="max_results_per_platform" type="number" min="1" max="25" value="5" /></label>
+                <label>Minimum trend score <input name="min_trend_score" type="number" min="0" max="100" value="0" /></label>
+              </div>
+              <div class="two-col">
+                <label>Channel ID <input name="channel_id" value="default" /></label>
+                <label>Queue priority <input name="priority" type="number" min="0" max="10" value="7" /></label>
+              </div>
+              <label class="check"><input name="auto_queue" type="checkbox" checked /> Add selected candidates to worker queue</label>
+              <button type="submit">Create Auto Reup Plan</button>
+            </form>
+            <div class="section-split">
+              <div>
+                <h3>Queued Items</h3>
+                <div id="autoQueueList" class="compact-list"></div>
+              </div>
+              <div>
+                <h3>Worker Runs</h3>
+                <div id="workerRunsList" class="compact-list"></div>
               </div>
             </div>
           </article>
@@ -206,7 +238,17 @@
                 <label>Speed <input name="speed" type="number" min="0.5" max="2" step="0.05" value="1" /></label>
               </div>
               <label>Watermark text <input name="watermark_text" placeholder="@brand" /></label>
+              <label>Background music path <input name="background_music_path" placeholder="C:\path\music.mp3" /></label>
+              <label>Output aspect
+                <select name="output_aspect">
+                  <option value="source">Keep source</option>
+                  <option value="9:16">Vertical 9:16</option>
+                  <option value="1:1">Square 1:1</option>
+                </select>
+              </label>
               <label class="check"><input name="mirror" type="checkbox" /> Mirror video</label>
+              <label class="check"><input name="hide_caption_area" type="checkbox" /> Cover old subtitle/text area</label>
+              <label class="check"><input name="mute_original" type="checkbox" /> Mute original audio</label>
               <label class="check"><input name="compress" type="checkbox" checked /> Compress output</label>
               <button type="submit">Process Video</button>
             </form>
@@ -238,6 +280,11 @@
               <p>Runtime paths, enabled platforms, and database location.</p>
             </div>
             <div id="settingsView" class="settings-view"></div>
+            <div class="panel-heading">
+              <h3>Local Worker Command</h3>
+              <p>Run this on the machine or VPS that has Chrome, cookies, FFmpeg, and storage access.</p>
+            </div>
+            <pre id="workerCommand">python worker.py --api-url http://127.0.0.1:8765 --process-video --hide-caption-area --watermark @brand</pre>
           </article>
 
           <article class="panel result-panel">
